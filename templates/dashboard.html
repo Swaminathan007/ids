@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDS Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- ApexCharts CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.css">
+    <style>
+        body {
+            display: flex;
+        }
+
+        #sidebar {
+            width: 250px;
+            height: 100vh;
+            background-color: #343a40;
+            color: white;
+            padding: 20px;
+            position: fixed;
+        }
+
+        #sidebar .nav-link {
+            color: white;
+        }
+
+        #content {
+            margin-left: 250px;
+            padding: 20px;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div id="sidebar" class="d-flex flex-column">
+        <h4 class="mb-4">Cyber Products</h4>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="#">Home</a>
+            <a class="nav-link" href="#">UFW Monitoring</a>
+            <a class="nav-link" href="#">IDS Logs</a>
+            <a class="nav-link" href="#">Settings</a>
+            <a class="nav-link" href="#">Help</a>
+        </nav>
+    </div>
+
+    <div id="content">
+        <div class="row">
+            <div class="container">
+                <h2 class="mb-4">Interfaces Traffic</h2>
+                <div class="container d-flex align-items-center justify-content-center flex-row flex-wrap p-2 shadow rounded" id="charts-container">
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.10.2/umd/popper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var container = document.getElementById("charts-container");
+            async function fetchInterfaces() {
+                try {
+                    const response = await fetch('/get-interfaces');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    return data.interfaces;
+                } catch (error) {
+                    console.error('Error fetching interfaces:', error);
+                    return [];
+                }
+            }
+    
+            async function initialize() {
+                const interfaces = await fetchInterfaces();
+                console.log(interfaces);
+                const chartObjects = {};
+                interfaces.forEach((interface) => {
+                    const chartId = `chart-${interface}`;
+                    var new_div = document.createElement("div");
+                    var heading = document.createElement("h2");
+                    heading.innerText = interface;
+                    new_div.id = chartId;
+                    new_div.className = "shadow rounded p-1 m-1";
+                    new_div.style.width = "25rem";
+                    new_div.style.height = "100px";
+                    container.appendChild(new_div);
+                    const options = {
+                        chart: {
+                            height:200,
+                            type: 'line',
+                            animations: {
+                                enabled: true,
+                                easing: 'linear',
+                                dynamicAnimation: {
+                                    speed: 1000
+                                }
+                            },
+                            toolbar: {
+                                show: false
+                            }
+                        },
+                        series: [{
+                            name: interface,
+                            data: []
+                        }],
+                        xaxis: {
+                            type: 'datetime',
+                            labels: {
+                                format: 'HH:mm:ss'
+                            },
+                            range: 10 * 1000 // 10 seconds
+                        },
+                        stroke: {
+                            curve: 'smooth'
+                        },
+                        yaxis: {
+                            min: 0,
+                            max: 2000
+                        },
+                        legend: {
+                            show: true,
+                            position: 'top'
+                        },
+                        title:{
+                            text:interface
+                        }
+                    };
+                    const chart = new ApexCharts(document.getElementById(`${chartId}`), options);
+                    chart.render();
+                    chartObjects[interface] = chart;
+                });
+                function updateData() {
+                    fetch('/firewalltraffic')
+                        .then(response => response.json())
+                        .then(data => {
+                            const currentTime = new Date().getTime();
+                            Object.keys(data).forEach(interface => {
+                                const newDataPoint = { x: currentTime, y: data[interface]%2000 };
+                                chartObjects[interface].appendData([{ data: [newDataPoint] }]);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching traffic data:', error));
+                        setTimeout(updateData, 1000);
+                }
+                updateData();
+            }
+            initialize();
+        });
+    </script>
+</body>
+
+</html>

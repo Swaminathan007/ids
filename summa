@@ -1,0 +1,82 @@
+function updateData() {
+                    fetch('/firewalltraffic')
+                        .then(response => response.json())
+                        .then(data => {
+                            const currentTime = new Date().getTime();
+                            Object.keys(data).forEach(interface => {
+                                const newDataPoint = { x: currentTime, y: data[interface] };
+                                chartObjects[interface].appendData([{ data: [newDataPoint] }]);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching traffic data:', error));
+                    setTimeout(updateData, 1000);
+                }
+                updateData();
+
+
+
+                interfaces.forEach(interface => {
+                    const chartId = `chart-${interface}`;
+                    const chartDiv = document.createElement('div');
+                    chartDiv.id = chartId;
+                    chartDiv.style.height = '350px';
+                    chartDiv.className = 'col-6 shadow rounded p-3';
+                    chartDiv.innerHTML = `<h2>${interface}</h2>`;
+                    document.getElementById('charts-container').appendChild(chartDiv);
+    
+                    const options = {
+                        chart: {
+                            height: 300,
+                            type: 'line',
+                            animations: {
+                                enabled: true,
+                                easing: 'linear',
+                                dynamicAnimation: {
+                                    speed: 1000
+                                }
+                            },
+                            toolbar: {
+                                show: false
+                            }
+                        },
+                        series: [{
+                            name: interface,
+                            data: []
+                        }],
+                        xaxis: {
+                            type: 'datetime',
+                            labels: {
+                                format: 'HH:mm:ss'
+                            },
+                            range: 10 * 1000 // 10 seconds
+                        },
+                        stroke: {
+                            curve: 'smooth'
+                        },
+                        yaxis: {
+                            min: 0,
+                            max: 2000
+                        },
+                        legend: {
+                            show: true,
+                            position: 'top'
+                        }
+                    };
+                    const chart = new ApexCharts(document.querySelector(`#${chartId}`), options);
+                    chart.render();
+                    chartObjects[interface] = chart;
+                });
+
+
+                <!-- Sidebar -->
+                <div id="sidebar" class="d-flex flex-column">
+                    <h4 class="mb-4">Cyber Products</h4>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="#">Home</a>
+                        <a class="nav-link" href="#">UFW Monitoring</a>
+                        <a class="nav-link" href="#">IDS Logs</a>
+                        <a class="nav-link" href="#">Settings</a>
+                        <a class="nav-link" href="#">Help</a>
+                    </nav>
+                </div>
+            
